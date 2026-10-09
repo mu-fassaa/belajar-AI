@@ -176,16 +176,53 @@ function rg() {
 }
 
 function es() {
-  const d = new Set(LS.g('esai', [])),
+  const d = new Set(LS.g('esai3', [])),
     L = E.map((x, k) => [x, k]).filter(y => !ch || y[0][0] == ch);
-  app.innerHTML = `<div class="pn"><h2>Kemungkinan soal esai</h2><p class="hint" style="margin:0 0 16px">Jawab di kertas, lalu ketuk soal untuk menandai sudah dilatih. ${d.size} dari ${E.length} selesai.</p>${L.map(y => `<button class="eq ${d.has(y[1]) ? 'dn' : ''}" data-q="${y[1]}"><span class="tag">Bab ${y[0][0]}</span>${y[0][1]}</button>`).join('')}</div>`;
-  app.querySelectorAll('.eq').forEach(b => b.onclick = () => {
-    const k = +b.dataset.q;
-    d.has(k) ? d.delete(k) : d.add(k);
-    LS.s('esai', [...d]);
-    const y = window.scrollY;
-    es();
-    window.scrollTo(0, y);
+
+  app.innerHTML = `<div class="pn">
+    <h2>Kemungkinan soal esai</h2>
+    <p class="hint" style="margin:0 0 16px">Buka pembahasan untuk mempelajari jawaban, lalu tandai jika sudah dilatih. ${d.size} dari ${E.length} selesai.</p>
+    ${L.map(([x, k]) => {
+      const isDone = d.has(k);
+      return `<details class="eq-card ${isDone ? 'dn' : ''}">
+        <summary class="eq-summary">
+          <span class="tag">Bab ${x[0]}</span>
+          <span class="eq-title">${x[1]}</span>
+        </summary>
+        <div class="eq-body">
+          <div class="eq-content">${x[2]}</div>
+          <div class="eq-actions">
+            <button class="cta ${isDone ? 'o' : ''} eq-btn" data-q="${k}">
+              ${isDone ? 'Tandai Belum Selesai' : 'Tandai Sudah Selesai'}
+            </button>
+          </div>
+        </div>
+      </details>`;
+    }).join('') || '<p>Belum ada soal esai untuk bab ini.</p>'}
+  </div>`;
+
+  app.querySelectorAll('.eq-btn').forEach(b => {
+    b.onclick = (e) => {
+      e.stopPropagation();
+      const k = +b.dataset.q;
+      if (d.has(k)) {
+        d.delete(k);
+      } else {
+        d.add(k);
+      }
+      LS.s('esai3', [...d]);
+      
+      const openIndices = [];
+      app.querySelectorAll('details.eq-card').forEach((el, idx) => {
+        if (el.open) openIndices.push(idx);
+      });
+      const y = window.scrollY;
+      es();
+      window.scrollTo(0, y);
+      app.querySelectorAll('details.eq-card').forEach((el, idx) => {
+        if (openIndices.includes(idx)) el.open = true;
+      });
+    };
   });
 }
 

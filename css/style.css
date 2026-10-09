@@ -409,24 +409,117 @@ select.wrong {
   text-decoration: underline;
 }
 
-.eq {
-  display: block;
-  width: 100%;
-  text-align: left;
+details.eq-card {
   background: var(--plum);
-  border: 0;
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 8px;
-  font-weight: 600;
-  line-height: 1.55;
-  min-height: 48px;
+  border-radius: 20px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 2px solid transparent;
+  transition: border-color 0.2s, opacity 0.2s;
 }
 
-.eq.dn {
-  opacity: .55;
-  text-decoration: line-through;
+details.eq-card[open] {
+  border-color: var(--yel);
 }
+
+details.eq-card.dn {
+  opacity: 0.75;
+}
+
+details.eq-card.dn summary .eq-title {
+  text-decoration: line-through;
+  opacity: 0.85;
+}
+
+summary.eq-summary {
+  padding: 18px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.5;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+summary.eq-summary::-webkit-details-marker,
+summary.eq-summary::marker {
+  display: none;
+}
+
+summary.eq-summary .eq-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--wh);
+  line-height: 1.4;
+}
+
+summary.eq-summary::after {
+  content: "▼ Buka Pembahasan";
+  font-size: 13px;
+  color: var(--yel);
+  margin-top: 6px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+details[open] summary.eq-summary::after {
+  content: "▲ Tutup Pembahasan";
+}
+
+.eq-body {
+  padding: 0 20px 20px 20px;
+  border-top: 2px dashed rgba(255, 255, 255, 0.15);
+  margin-top: 4px;
+}
+
+.eq-content {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  max-width: 68ch;
+  color: var(--wh);
+  padding-top: 16px;
+}
+
+.eq-content p {
+  margin: 12px 0;
+}
+
+.eq-content ul,
+.eq-content ol {
+  padding-left: 24px;
+  margin: 12px 0;
+}
+
+.eq-content li {
+  margin-bottom: 8px;
+}
+
+.eq-content b {
+  color: var(--yel);
+}
+
+.eq-content i {
+  opacity: 0.9;
+}
+
+.eq-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.eq-btn {
+  font-size: 14px;
+  padding: 10px 20px;
+  min-height: 44px;
+}
+
 
 @media(max-width:520px) {
   main {
