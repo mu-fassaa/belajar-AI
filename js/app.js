@@ -67,27 +67,64 @@ function getQuestionById(id) {
 }
 
 // Navigation & Filter Chips
+function updateScrollFades() {
+  ['tabs', 'chips'].forEach(id => {
+    const el = $('#' + id);
+    const wrap = $('#' + id + '-wrap') || el;
+    if (!el || !wrap) return;
+    const canLeft = el.scrollLeft > 2;
+    const canRight = el.scrollLeft < (el.scrollWidth - el.clientWidth - 2);
+    wrap.classList.toggle('can-scroll-left', canLeft);
+    wrap.classList.toggle('can-scroll-right', canRight);
+  });
+}
+
+// Navigation & Filter Chips
 function nav() {
+  const tabsEl = $('#tabs');
+  const chipsEl = $('#chips');
+
+  const tabsScroll = tabsEl ? tabsEl.scrollLeft : 0;
+  const chipsScroll = chipsEl ? chipsEl.scrollLeft : 0;
+
   const wrongMap = AIStorage.get('wrongReview', {});
   const wrongCount = Object.keys(wrongMap).length;
   const bmList = AIStorage.get('bookmarks', []);
   const bmCount = Array.isArray(bmList) ? bmList.length : 0;
 
-  $('#tabs').innerHTML = TABS.map(t => {
-    let label = t[1];
-    if (t[0] === 'wrong' && wrongCount > 0) {
-      label += ` (${wrongCount})`;
+  if (tabsEl) {
+    tabsEl.innerHTML = TABS.map(t => {
+      let label = t[1];
+      if (t[0] === 'wrong' && wrongCount > 0) {
+        label += ` (${wrongCount})`;
+      }
+      const isSelected = mode === t[0];
+      return `<button class="tab ${isSelected ? 'on' : ''}" data-m="${t[0]}" role="tab" aria-selected="${isSelected ? 'true' : 'false'}" tabindex="${isSelected ? '0' : '-1'}" aria-label="${t[1]}">${label}</button>`;
+    }).join('');
+    tabsEl.scrollLeft = tabsScroll;
+    const activeTab = tabsEl.querySelector('.tab.on');
+    if (activeTab && tabsEl.scrollWidth > tabsEl.clientWidth) {
+      activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
     }
-    return `<button class="tab ${mode === t[0] ? 'on' : ''}" data-m="${t[0]}" aria-label="${t[1]}">${label}</button>`;
-  }).join('');
+  }
 
-  const chipsHtml = ['Semua', 1, 2, 3, 4, 5, 6, 7].map((c, k) => (
-    `<button class="chip ${ch === k ? 'on' : ''}" data-c="${k}" aria-label="${k ? 'Bab ' + c : 'Semua Bab'}">${k ? 'Bab ' + c : c}</button>`
-  )).join('');
+  if (chipsEl) {
+    const chipsHtml = ['Semua', 1, 2, 3, 4, 5, 6, 7].map((c, k) => {
+      const isSelected = ch === k;
+      return `<button class="chip ${isSelected ? 'on' : ''}" data-c="${k}" role="button" aria-pressed="${isSelected ? 'true' : 'false'}" aria-label="${k ? 'Bab ' + c : 'Semua Bab'}">${k ? 'Bab ' + c : c}</button>`;
+    }).join('');
 
-  const bmChipHtml = `<button class="chip ${onlyBm ? 'on' : ''}" id="bm-filter-btn" aria-label="Filter hanya soal yang ditandai penting">★ Penting ${bmCount > 0 ? '(' + bmCount + ')' : ''}</button>`;
+    const bmChipHtml = `<button class="chip ${onlyBm ? 'on' : ''}" id="bm-filter-btn" role="button" aria-pressed="${onlyBm ? 'true' : 'false'}" aria-label="Filter hanya soal yang ditandai penting">★ Penting ${bmCount > 0 ? '(' + bmCount + ')' : ''}</button>`;
 
-  $('#chips').innerHTML = chipsHtml + bmChipHtml;
+    chipsEl.innerHTML = chipsHtml + bmChipHtml;
+    chipsEl.scrollLeft = chipsScroll;
+    const activeChip = chipsEl.querySelector('.chip.on');
+    if (activeChip && chipsEl.scrollWidth > chipsEl.clientWidth) {
+      activeChip.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    }
+  }
+
+  updateScrollFades();
 }
 
 // Standard Quiz Flow for BS, MT, FI
@@ -643,23 +680,6 @@ function home() {
   }).length;
   const dailyPct = Math.min(100, Math.round((answersToday / dailyGoal) * 100));
 
-  // 7-day Chart Calculation
-  const daysData = [];
-  const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-  let maxCountIn7d = 1;
-
-  for (let dIdx = 6; dIdx >= 0; dIdx--) {
-    const targetDate = new Date(Date.now() - dIdx * 86400000);
-    const dateStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
-    const dayName = dayNames[targetDate.getDay()];
-    const count = history.filter(h => {
-      const d = new Date(h.waktu);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` === dateStr;
-    }).length;
-    if (count > maxCountIn7d) maxCountIn7d = count;
-    daysData.push({ dayName, count, isToday: dIdx === 0 });
-  }
-
   // Chapter Progress Calculation
   const leitner = AIStorage.get('leitner', {});
   const chStats = [];
@@ -719,25 +739,6 @@ function home() {
       </div>
       <div class="ch-meter">
         <div class="ch-meter-fill" style="width:${dailyPct}%"></div>
-      </div>
-    </div>
-
-    <!-- 7-day Activity Chart -->
-    <div class="dash-card">
-      <div class="chart-title">Aktivitas 7 Hari Terakhir</div>
-      <div class="chart-bars">
-        ${daysData.map(d => {
-          const heightPct = Math.max(8, Math.round((d.count / maxCountIn7d) * 100));
-          return `
-            <div class="chart-col">
-              <span class="chart-count">${d.count}</span>
-              <div class="chart-bar-wrap">
-                <div class="chart-bar ${d.count === 0 ? 'empty' : ''}" style="height:${heightPct}%"></div>
-              </div>
-              <span class="chart-label" style="${d.isToday ? 'color:var(--yel);font-weight:800' : ''}">${d.dayName}</span>
-            </div>
-          `;
-        }).join('')}
       </div>
     </div>
 
@@ -917,5 +918,100 @@ $('#rsall').onclick = () => {
   }
 };
 
+// Initialize Mouse, Drag, Keyboard, and Scroll Interactions
+function initContainerInteractions() {
+  ['tabs', 'chips'].forEach(id => {
+    const el = $('#' + id);
+    if (!el) return;
+
+    el.addEventListener('scroll', updateScrollFades, { passive: true });
+
+    el.addEventListener('wheel', e => {
+      if (el.scrollWidth > el.clientWidth) {
+        const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+        if (delta !== 0) {
+          el.scrollLeft += delta;
+          updateScrollFades();
+          e.preventDefault();
+        }
+      }
+    }, { passive: false });
+
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let isDragging = false;
+
+    el.addEventListener('mousedown', e => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      isDown = true;
+      isDragging = false;
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+    });
+
+    el.addEventListener('mouseleave', () => {
+      isDown = false;
+    });
+
+    el.addEventListener('mouseup', () => {
+      isDown = false;
+    });
+
+    el.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      const x = e.pageX - el.offsetLeft;
+      const walk = (x - startX);
+      if (Math.abs(walk) > 5) {
+        isDragging = true;
+      }
+      if (isDragging) {
+        e.preventDefault();
+        el.scrollLeft = scrollLeft - walk;
+        updateScrollFades();
+      }
+    });
+
+    el.addEventListener('click', e => {
+      if (isDragging) {
+        e.stopImmediatePropagation();
+        e.preventDefault();
+        isDragging = false;
+      }
+    }, true);
+  });
+
+  window.addEventListener('resize', updateScrollFades, { passive: true });
+
+  const tabsContainer = $('#tabs');
+  if (tabsContainer) {
+    tabsContainer.addEventListener('keydown', e => {
+      const tabs = Array.from(tabsContainer.querySelectorAll('.tab'));
+      const currentTab = document.activeElement;
+      const index = tabs.indexOf(currentTab);
+      if (index === -1) return;
+
+      let nextIndex = index;
+      if (e.key === 'ArrowRight') {
+        nextIndex = (index + 1) % tabs.length;
+      } else if (e.key === 'ArrowLeft') {
+        nextIndex = (index - 1 + tabs.length) % tabs.length;
+      } else if (e.key === 'Home') {
+        nextIndex = 0;
+      } else if (e.key === 'End') {
+        nextIndex = tabs.length - 1;
+      } else {
+        return;
+      }
+
+      e.preventDefault();
+      const targetTab = tabs[nextIndex];
+      targetTab.focus();
+      targetTab.click();
+    });
+  }
+}
+
 // Start application
+initContainerInteractions();
 go();

@@ -133,16 +133,18 @@ button {
   box-shadow: 0 8px 24px rgba(74, 31, 85, .35);
 }
 
-.tabs {
+.tabs-wrap {
   position: sticky;
   top: env(safe-area-inset-top, 0px);
   z-index: 5;
   background: var(--plum);
   padding: 8px 0;
+}
+
+.tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
 .tab,
@@ -163,12 +165,15 @@ button {
   color: var(--plum);
 }
 
+.chips-wrap {
+  margin: 8px 0 24px;
+  position: relative;
+}
+
 .chips {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  margin: 8px 0 24px;
   padding-bottom: 4px;
 }
 
@@ -177,6 +182,71 @@ button {
   font-size: 13px;
   min-height: 36px;
   padding: 4px 16px;
+}
+
+@media (max-width: 768px) {
+  .tabs-wrap,
+  .chips-wrap {
+    position: relative;
+  }
+
+  .tabs,
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  .tabs::-webkit-scrollbar,
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab,
+  .chip {
+    scroll-snap-align: start;
+  }
+
+  .tabs-wrap::before,
+  .tabs-wrap::after,
+  .chips-wrap::before,
+  .chips-wrap::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .tabs-wrap::before,
+  .chips-wrap::before {
+    left: 0;
+    background: linear-gradient(to right, var(--plum) 0%, rgba(74, 31, 85, 0) 100%);
+  }
+
+  .tabs-wrap::after,
+  .chips-wrap::after {
+    right: 0;
+    background: linear-gradient(to left, var(--plum) 0%, rgba(74, 31, 85, 0) 100%);
+  }
+
+  .tabs-wrap.can-scroll-left::before,
+  .chips-wrap.can-scroll-left::before {
+    opacity: 1;
+  }
+
+  .tabs-wrap.can-scroll-right::after,
+  .chips-wrap.can-scroll-right::after {
+    opacity: 1;
+  }
 }
 
 .pn {
@@ -573,10 +643,6 @@ details[open] summary.eq-summary::after {
   background: rgba(255, 255, 255, 0.25);
 }
 
-/* 7-day Activity Chart */
-.chart-container {
-  margin-top: 16px;
-}
 .chart-title {
   font-size: 13px;
   font-weight: 800;
@@ -584,53 +650,6 @@ details[open] summary.eq-summary::after {
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-}
-.chart-bars {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 6px;
-  height: 120px;
-  padding: 12px 10px 8px;
-  background: var(--plum);
-  border-radius: 20px;
-}
-.chart-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  gap: 6px;
-}
-.chart-bar-wrap {
-  width: 100%;
-  max-width: 28px;
-  height: 64px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-.chart-bar {
-  width: 100%;
-  background: var(--yel);
-  border-radius: 6px 6px 0 0;
-  min-height: 4px;
-  transition: height 0.3s ease;
-}
-.chart-bar.empty {
-  background: rgba(255, 255, 255, 0.15);
-}
-.chart-count {
-  font-size: 11px;
-  font-weight: 800;
-  color: var(--wh);
-}
-.chart-label {
-  font-size: 12px;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.75);
 }
 
 /* Chapter Progress Rows */
