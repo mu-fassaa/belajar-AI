@@ -6,6 +6,9 @@
   --plum: #4A1F55;
   --wh: #fff;
   --org: #E8742A;
+  --rad: 28px;
+  --sh: 0 8px 24px rgba(74, 31, 85, .35);
+  --main-px: 16px;
 }
 
 * {
@@ -15,6 +18,13 @@
 html {
   scroll-padding-top: env(safe-area-inset-top, 0px);
   -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+@supports (overflow-x: clip) {
+  html {
+    overflow-x: clip;
+  }
 }
 
 body {
@@ -22,10 +32,23 @@ body {
   background: var(--plum);
   color: var(--wh);
   font: 600 15px/1.6 'Plus Jakarta Sans', system-ui, sans-serif;
-  overflow-x: hidden;
+  position: relative;
   padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
   overflow-wrap: break-word;
   line-height: 1.65;
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 330px;
+  background: var(--gp);
+  clip-path: polygon(0 0, 100% 0, 100% 45%, 0 100%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 body::after {
@@ -42,19 +65,27 @@ main {
   position: relative;
   max-width: 760px;
   margin: 0 auto;
-  padding: 0 16px 64px;
+  padding: 0 var(--main-px) 64px;
 }
 
-main::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -50vw;
-  right: -50vw;
-  height: 330px;
-  background: var(--gp);
-  clip-path: polygon(0 0, 100% 0, 100% 45%, 0 100%);
-  z-index: -1;
+img, video, canvas, svg, iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+table {
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-collapse: collapse;
+}
+
+pre, code {
+  max-width: 100%;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
 }
 
 button,
@@ -133,12 +164,27 @@ button {
   box-shadow: 0 8px 24px rgba(74, 31, 85, .35);
 }
 
+#tabs-sentinel {
+  height: 1px;
+  margin-top: -1px;
+  pointer-events: none;
+  visibility: hidden;
+}
+
 .tabs-wrap {
   position: sticky;
   top: env(safe-area-inset-top, 0px);
-  z-index: 5;
-  background: var(--plum);
+  z-index: 10;
+  background: transparent;
   padding: 8px 0;
+  transition: background 0.2s ease, box-shadow 0.2s ease, margin 0.2s ease, padding 0.2s ease;
+}
+
+.tabs-wrap.is-stuck {
+  background: var(--plum);
+  margin-inline: calc(-1 * var(--main-px));
+  padding-inline: var(--main-px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .tabs {
@@ -168,6 +214,7 @@ button {
 .chips-wrap {
   margin: 8px 0 24px;
   position: relative;
+  background: transparent;
 }
 
 .chips {
@@ -185,7 +232,12 @@ button {
 }
 
 @media (max-width: 768px) {
-  .tabs-wrap,
+  .tabs-wrap {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+  }
+
   .chips-wrap {
     position: relative;
   }
@@ -199,6 +251,7 @@ button {
     scroll-snap-type: x proximity;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+    transition: -webkit-mask-image 0.2s ease, mask-image 0.2s ease;
   }
 
   .tabs::-webkit-scrollbar,
@@ -211,41 +264,23 @@ button {
     scroll-snap-align: start;
   }
 
-  .tabs-wrap::before,
-  .tabs-wrap::after,
-  .chips-wrap::before,
-  .chips-wrap::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 28px;
-    pointer-events: none;
-    z-index: 6;
-    opacity: 0;
-    transition: opacity 0.2s ease;
+  /* Fade edges via mask-image (alpha mask) */
+  .tabs-wrap.can-scroll-left:not(.can-scroll-right) .tabs,
+  .chips-wrap.can-scroll-left:not(.can-scroll-right) .chips {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 100%);
   }
 
-  .tabs-wrap::before,
-  .chips-wrap::before {
-    left: 0;
-    background: linear-gradient(to right, var(--plum) 0%, rgba(74, 31, 85, 0) 100%);
+  .tabs-wrap.can-scroll-right:not(.can-scroll-left) .tabs,
+  .chips-wrap.can-scroll-right:not(.can-scroll-left) .chips {
+    -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
   }
 
-  .tabs-wrap::after,
-  .chips-wrap::after {
-    right: 0;
-    background: linear-gradient(to left, var(--plum) 0%, rgba(74, 31, 85, 0) 100%);
-  }
-
-  .tabs-wrap.can-scroll-left::before,
-  .chips-wrap.can-scroll-left::before {
-    opacity: 1;
-  }
-
-  .tabs-wrap.can-scroll-right::after,
-  .chips-wrap.can-scroll-right::after {
-    opacity: 1;
+  .tabs-wrap.can-scroll-left.can-scroll-right .tabs,
+  .chips-wrap.can-scroll-left.can-scroll-right .chips {
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+    mask-image: linear-gradient(to right, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
   }
 }
 
@@ -777,8 +812,12 @@ details[open] summary.eq-summary::after {
 
 
 @media(max-width:520px) {
+  :root {
+    --main-px: max(12px, env(safe-area-inset-left, 12px));
+  }
+
   main {
-    padding: 0 max(12px, env(safe-area-inset-left)) 48px max(12px, env(safe-area-inset-right));
+    padding: 0 var(--main-px) 48px;
   }
 
   .hd {
@@ -798,11 +837,6 @@ details[open] summary.eq-summary::after {
     font-size: 22px;
     right: 14px;
     top: 12px;
-  }
-
-  .tabs {
-    margin: 0 -12px;
-    padding: 8px 12px;
   }
 
   .mr>div,

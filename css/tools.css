@@ -8,9 +8,9 @@ main {
 /* ---------- Bubble ---------- */
 .tools-bubble {
   position: fixed;
-  right: 16px;
+  right: calc(16px + env(safe-area-inset-right, 0px));
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  z-index: 50;
+  z-index: 99;
   width: 56px;
   height: 56px;
   border-radius: 50%;

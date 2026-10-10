@@ -975,8 +975,27 @@ $('#rsall').onclick = () => {
   }
 };
 
+function initStickyObserver() {
+  const sentinel = $('#tabs-sentinel');
+  const tabsWrap = $('#tabs-wrap');
+  if (!sentinel || !tabsWrap || typeof IntersectionObserver === 'undefined') return;
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const isStuck = !entry.isIntersecting && entry.boundingClientRect.top <= 0;
+      tabsWrap.classList.toggle('is-stuck', isStuck);
+    });
+  }, {
+    threshold: [0, 1]
+  });
+
+  observer.observe(sentinel);
+}
+
 // Initialize Mouse, Drag, Keyboard, and Scroll Interactions
 function initContainerInteractions() {
+  initStickyObserver();
+
   ['tabs', 'chips'].forEach(id => {
     const el = $('#' + id);
     if (!el) return;

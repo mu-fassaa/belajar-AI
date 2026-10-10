@@ -1,5 +1,5 @@
 /* ===== Service Worker for BelajarAI Offline Access ===== */
-const CACHE_NAME = 'belajar-ai-v2.1';
+const CACHE_NAME = 'belajar-ai-v2.2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
