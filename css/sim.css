@@ -1,0 +1,299 @@
+/* ===== Simulasi Ujian UTS Styling ===== */
+
+.sim-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sim-header {
+  background: var(--plum);
+  color: var(--wh);
+  padding: 20px;
+  border-radius: var(--rad);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: var(--sh);
+}
+
+.sim-timer {
+  font-family: 'Anton', sans-serif;
+  font-size: 32px;
+  letter-spacing: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 6px 18px;
+  border-radius: 99px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  color: var(--yel);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.sim-timer.warning {
+  background: #E8742A;
+  color: #FFF;
+  animation: pulse-timer 1s infinite alternate;
+}
+
+@keyframes pulse-timer {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.05); }
+}
+
+.sim-grid-nav {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 12px;
+  border-radius: 16px;
+  margin-top: 12px;
+}
+
+.sim-grid-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--wh);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.sim-grid-btn.answered {
+  background: var(--mag);
+  border-color: var(--mag);
+  color: #FFF;
+}
+
+.sim-grid-btn.flagged {
+  background: var(--yel);
+  border-color: var(--yel);
+  color: var(--plum);
+}
+
+.sim-grid-btn.current {
+  border-color: #FFF;
+  box-shadow: 0 0 0 3px var(--cy);
+}
+
+.sim-card {
+  background: var(--wh);
+  color: #222;
+  padding: 24px;
+  border-radius: var(--rad);
+  box-shadow: var(--sh);
+}
+
+.sim-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #F0F0F0;
+}
+
+.sim-tag {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--mag);
+  background: #FDF0FA;
+  padding: 4px 12px;
+  border-radius: 99px;
+}
+
+.sim-flag-btn {
+  background: #FFF;
+  border: 2px solid #DDD;
+  border-radius: 99px;
+  padding: 4px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+  color: #666;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sim-flag-btn.on {
+  background: var(--yel);
+  border-color: var(--yel);
+  color: var(--plum);
+}
+
+.sim-question-text {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  color: var(--plum);
+}
+
+/* Matching UI in Sim */
+.sim-mt-box {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+  .sim-mt-box {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sim-mt-item {
+  padding: 12px 16px;
+  border: 2px solid #E5E5E5;
+  border-radius: 16px;
+  background: #FAF9FB;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.sim-mt-item.selected {
+  border-color: var(--cy);
+  background: #EBF9FE;
+  color: #0E688B;
+}
+
+.sim-mt-item.paired {
+  border-color: var(--mag);
+  background: #FDF0FA;
+  color: var(--mag);
+}
+
+/* Sim Navigation Actions */
+.sim-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+.sim-actions button {
+  min-height: 48px;
+}
+
+/* Result Screen */
+.sim-result-hero {
+  background: linear-gradient(135deg, var(--plum) 0%, #35133E 100%);
+  color: var(--wh);
+  padding: 32px 24px;
+  border-radius: var(--rad);
+  text-align: center;
+  box-shadow: var(--sh);
+}
+
+.sim-big-score {
+  font-family: 'Anton', sans-serif;
+  font-size: 80px;
+  color: var(--yel);
+  line-height: 1;
+  margin: 12px 0;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.sim-rank-badge {
+  display: inline-block;
+  background: var(--mag);
+  color: var(--wh);
+  font-weight: 800;
+  padding: 6px 20px;
+  border-radius: 99px;
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+
+.sim-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.sim-stat-card {
+  background: var(--wh);
+  padding: 16px;
+  border-radius: 20px;
+  box-shadow: var(--sh);
+}
+
+.sim-stat-card h4 {
+  font-size: 13px;
+  color: #777;
+  margin-bottom: 4px;
+}
+
+.sim-stat-card .val {
+  font-family: 'Anton', sans-serif;
+  font-size: 28px;
+  color: var(--plum);
+}
+
+.sim-review-item {
+  background: var(--wh);
+  border-radius: 20px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--sh);
+  border-left: 6px solid #DDD;
+}
+
+.sim-review-item.correct {
+  border-left-color: #2ECC71;
+}
+
+.sim-review-item.wrong {
+  border-left-color: #E74C3C;
+}
+
+.sim-review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.sim-review-status {
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 12px;
+}
+
+.sim-review-status.correct {
+  background: #E8F8F0;
+  color: #27AE60;
+}
+
+.sim-review-status.wrong {
+  background: #FDEDEC;
+  color: #C0392B;
+}
+
+.sim-review-exp {
+  background: #F8F6FA;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 13px;
+  margin-top: 10px;
+  color: #444;
+}

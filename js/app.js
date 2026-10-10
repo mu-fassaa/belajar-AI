@@ -31,7 +31,8 @@ const TABS = [
   ['mt', 'Cocokkan'],
   ['fi', 'Isian'],
   ['wrong', 'Ulangi Salah'],
-  ['es', 'Esai']
+  ['es', 'Esai'],
+  ['sim', 'Simulasi']
 ];
 
 // App State
@@ -290,25 +291,77 @@ const MT = {
   }
 };
 
-// Isian Handlers
+// Levenshtein Distance & Fuzzy Matcher for Isian
+function levenshteinDistance(a, b) {
+  a = String(a).toLowerCase().trim();
+  b = String(b).toLowerCase().trim();
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
+function checkIsianAnswer(userVal, keywordPattern) {
+  if (!userVal) return { ok: false, fuzzy: false };
+  const v = String(userVal).trim().toLowerCase();
+  const keywords = String(keywordPattern).split('/').map(k => k.trim().toLowerCase());
+
+  for (const kw of keywords) {
+    if (v.includes(kw) || kw.includes(v)) {
+      return { ok: true, fuzzy: false };
+    }
+  }
+
+  const words = v.split(/\s+/);
+  for (const kw of keywords) {
+    for (const word of words) {
+      if (word.length >= 4 && kw.length >= 4) {
+        const dist = levenshteinDistance(word, kw);
+        if (dist <= 1 || (kw.length >= 8 && dist <= 2)) {
+          return { ok: true, fuzzy: true };
+        }
+      }
+    }
+  }
+
+  return { ok: false, fuzzy: false };
+}
+
+// Isian Handlers with Fuzzy Matching
 const FI = {
   h: x => `<p class="q">${x[1]}</p><input id="ans" placeholder="Ketik jawabanmu" autocomplete="off"><button class="cta w" id="ck">Periksa</button>`,
   b: (x, fin) => {
-    const go = () => {
-      const v = $('#ans').value.trim().toLowerCase();
-      const ok = !!v && x[2].split('/').some(a => v.includes(a));
+    const goCheck = () => {
+      const v = $('#ans').value;
+      const res = checkIsianAnswer(v, x[2]);
       $('#ans').disabled = true;
       $('#ck').remove();
 
-      // Log answer
       const qId = AIStorage.hashId('fi', x[1]);
-      AIStorage.logAnswer({ id: qId, kategori: 'fi', bab: x[0], benar: ok });
+      AIStorage.logAnswer({ id: qId, kategori: 'fi', bab: x[0], benar: res.ok });
 
-      fin(+ok, `${ok ? 'Benar. ' : 'Belum tepat. '}Jawaban: <b>${x[3]}</b>`);
+      let msg = res.ok
+        ? (res.fuzzy ? '<b>Benar!</b> <i>(Tip: perhatikan ejaan)</i>. ' : '<b>Benar!</b> ')
+        : 'Belum tepat. ';
+      msg += `Jawaban: <b>${x[3]}</b>`;
+      fin(+res.ok, msg);
     };
-    $('#ck').onclick = go;
+    $('#ck').onclick = goCheck;
     $('#ans').onkeydown = e => {
-      if (e.key === 'Enter') go();
+      if (e.key === 'Enter') goCheck();
     };
   }
 };
@@ -843,6 +896,9 @@ function home() {
 
 // Master Router
 function go() {
+  if (window.location.hash !== '#' + mode) {
+    history.replaceState(null, '', '#' + mode);
+  }
   nav();
   try {
     const fn = {
@@ -853,7 +909,8 @@ function go() {
       mt: () => flow('mt', M, MT, 1),
       fi: () => flow('fi', F, FI, 1),
       wrong,
-      es
+      es,
+      sim
     }[mode];
     if (fn) {
       fn();
@@ -1012,6 +1069,601 @@ function initContainerInteractions() {
   }
 }
 
+// ── Simulasi Ujian UTS Controller ──────────────────────────────────────────────
+let simInterval = null;
+
+function sim() {
+  if (simInterval) {
+    clearInterval(simInterval);
+    simInterval = null;
+  }
+
+  const active = AIStorage.get('active_sim', null);
+  if (!active) {
+    renderSimSetupScreen();
+    return;
+  }
+
+  if (active.submitted) {
+    renderSimResultScreen(active);
+    return;
+  }
+
+  renderSimExamScreen(active);
+}
+
+function renderSimSetupScreen() {
+  const history = AIStorage.get('simulations', []);
+  const highest = history.reduce((max, h) => Math.max(max, h.skorTotal || 0), 0);
+  const totalCount = history.length;
+  const avg = totalCount ? Math.round(history.reduce((sum, h) => sum + (h.skorTotal || 0), 0) / totalCount) : 0;
+
+  app.innerHTML = `
+    <div class="sim-container">
+      <div class="sim-result-hero">
+        <h2 style="font-family:'Knewave',cursive;font-size:28px;color:var(--yel);margin:0 0 8px">Simulasi Ujian UTS AI</h2>
+        <p style="margin:0 0 16px;opacity:0.9">Format ujian UTS standar: 20 Soal Campuran (Benar/Salah, Isian, Cocokkan) dengan batasan waktu.</p>
+        <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+          <span class="sim-rank-badge">⚡ 20 Soal Campuran</span>
+          <span class="sim-rank-badge" style="background:var(--cy);color:var(--plum)">⏱ Durasi Terukur</span>
+          <span class="sim-rank-badge" style="background:var(--yel);color:var(--plum)">📊 Analisis Hasil</span>
+        </div>
+      </div>
+
+      <div class="sim-stats-grid">
+        <div class="sim-stat-card">
+          <h4>Ujian Diikuti</h4>
+          <div class="val">${totalCount} Kali</div>
+        </div>
+        <div class="sim-stat-card">
+          <h4>Skor Tertinggi</h4>
+          <div class="val" style="color:var(--mag)">${highest} / 100</div>
+        </div>
+        <div class="sim-stat-card">
+          <h4>Rata-rata Skor</h4>
+          <div class="val" style="color:var(--cy)">${avg} / 100</div>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <h3>Pengaturan Simulasi Ujian</h3>
+        <div style="display:flex;flex-direction:column;gap:16px;margin:16px 0">
+          <div>
+            <label style="font-weight:800;display:block;margin-bottom:6px">Durasi Ujian:</label>
+            <select id="sim-opt-duration" style="width:100%;padding:12px;border-radius:12px;border:2px solid #DDD;font-weight:700">
+              <option value="30" selected>30 Menit (Standar UTS)</option>
+              <option value="20">20 Menit (Tantangan Cepat)</option>
+              <option value="45">45 Menit (Santai)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight:800;display:block;margin-bottom:6px">Cakupan Bab:</label>
+            <select id="sim-opt-bab" style="width:100%;padding:12px;border-radius:12px;border:2px solid #DDD;font-weight:700">
+              <option value="0" selected>Semua Bab (Bab 1–7 Kumulatif)</option>
+              ${[1,2,3,4,5,6,7].map(b => `<option value="${b}">Bab ${b}: ${CHAPTER_NAMES[b]}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <button class="cta" id="btn-start-sim" style="width:100%;min-height:52px;font-size:16px">🚀 Mulai Ujian Sekarang</button>
+      </div>
+    </div>
+  `;
+
+  $('#btn-start-sim').onclick = () => {
+    const durMin = parseInt($('#sim-opt-duration').value, 10) || 30;
+    const selectedBab = parseInt($('#sim-opt-bab').value, 10) || 0;
+
+    let bsPool = B.filter(x => !selectedBab || x[0] === selectedBab);
+    let fiPool = F.filter(x => !selectedBab || x[0] === selectedBab);
+    let mtPool = M.filter(x => !selectedBab || x[0] === selectedBab);
+
+    bsPool = sh(bsPool).slice(0, 8);
+    fiPool = sh(fiPool).slice(0, 8);
+    mtPool = sh(mtPool).slice(0, 4);
+
+    const questions = [];
+    bsPool.forEach(item => questions.push({ type: 'bs', data: item, bab: item[0], id: AIStorage.hashId('bs', item[1]) }));
+    fiPool.forEach(item => questions.push({ type: 'fi', data: item, bab: item[0], id: AIStorage.hashId('fi', item[1]) }));
+    mtPool.forEach(item => questions.push({ type: 'mt', data: item, bab: item[0], id: AIStorage.hashId('mt', item[1]) }));
+
+    const shuffledQuestions = sh(questions);
+
+    const activeSim = {
+      id: 'sim_' + Date.now(),
+      startTime: Date.now(),
+      durationMin: durMin,
+      endTimeMs: Date.now() + (durMin * 60 * 1000),
+      questions: shuffledQuestions,
+      answers: {},
+      flags: {},
+      currentIdx: 0,
+      submitted: false
+    };
+
+    AIStorage.set('active_sim', activeSim);
+    renderSimExamScreen(activeSim);
+  };
+}
+
+function renderSimExamScreen(activeSim) {
+  const qList = activeSim.questions;
+  const currIdx = activeSim.currentIdx || 0;
+  const q = qList[currIdx];
+
+  const updateTimer = () => {
+    const remainMs = activeSim.endTimeMs - Date.now();
+    if (remainMs <= 0) {
+      if (simInterval) clearInterval(simInterval);
+      alert('Waktu ujian telah habis! Jawaban kamu dikumpulkan secara otomatis.');
+      submitSim(activeSim);
+      return;
+    }
+
+    const totalSec = Math.floor(remainMs / 1000);
+    const m = String(Math.floor(totalSec / 60)).padStart(2, '0');
+    const s = String(totalSec % 60).padStart(2, '0');
+
+    const timerEl = $('#sim-timer-display');
+    if (timerEl) {
+      timerEl.textContent = `${m}:${s}`;
+      if (totalSec < 300) {
+        timerEl.classList.add('warning');
+      } else {
+        timerEl.classList.remove('warning');
+      }
+    }
+  };
+
+  simInterval = setInterval(updateTimer, 1000);
+
+  const answeredCount = Object.keys(activeSim.answers).length;
+
+  app.innerHTML = `
+    <div class="sim-container">
+      <div class="sim-header">
+        <div>
+          <span class="sim-tag">Ujian UTS Berlangsung</span>
+          <h3 style="margin:4px 0 0;font-size:18px">${answeredCount} dari ${qList.length} Soal Terjawab</h3>
+        </div>
+        <div class="sim-timer" id="sim-timer-display">--:--</div>
+      </div>
+
+      <div class="sim-grid-nav">
+        ${qList.map((item, idx) => {
+          const isAns = activeSim.answers[idx] !== undefined && activeSim.answers[idx] !== '';
+          const isFlg = !!activeSim.flags[idx];
+          const isCurr = idx === currIdx;
+          let cls = 'sim-grid-btn';
+          if (isAns) cls += ' answered';
+          if (isFlg) cls += ' flagged';
+          if (isCurr) cls += ' current';
+          return `<button class="${cls}" data-idx="${idx}">${idx + 1}</button>`;
+        }).join('')}
+      </div>
+
+      <div class="sim-card">
+        <div class="sim-card-top">
+          <span class="sim-tag">Soal ${currIdx + 1} dari ${qList.length} · Bab ${q.bab} (${q.type === 'bs' ? 'Benar/Salah' : q.type === 'fi' ? 'Isian' : 'Cocokkan'})</span>
+          <button class="sim-flag-btn ${activeSim.flags[currIdx] ? 'on' : ''}" id="btn-flag">
+            ★ ${activeSim.flags[currIdx] ? 'Ragu-ragu' : 'Tandai'}
+          </button>
+        </div>
+
+        <div class="sim-question-text">${q.type === 'bs' ? q.data[1] : q.type === 'fi' ? q.data[1] : q.data[1]}</div>
+
+        <div id="sim-q-body"></div>
+
+        <div class="sim-actions">
+          <button class="cta o" id="btn-sim-prev" ${currIdx === 0 ? 'disabled' : ''}>← Sebelum</button>
+          <button class="cta o" id="btn-sim-next" ${currIdx === qList.length - 1 ? 'disabled' : ''}>Lanjut →</button>
+          <button class="cta w" id="btn-sim-submit" style="background:var(--mag);border-color:var(--mag);color:#FFF">✓ Kumpulkan Ujian</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  updateTimer();
+
+  app.querySelectorAll('.sim-grid-btn').forEach(btn => {
+    btn.onclick = () => {
+      activeSim.currentIdx = parseInt(btn.dataset.idx, 10);
+      AIStorage.set('active_sim', activeSim);
+      renderSimExamScreen(activeSim);
+    };
+  });
+
+  $('#btn-flag').onclick = () => {
+    activeSim.flags[currIdx] = !activeSim.flags[currIdx];
+    AIStorage.set('active_sim', activeSim);
+    renderSimExamScreen(activeSim);
+  };
+
+  const bodyEl = $('#sim-q-body');
+  const userAns = activeSim.answers[currIdx];
+
+  if (q.type === 'bs') {
+    bodyEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0">
+        <button class="cta ${userAns === true ? '' : 'o'}" id="bs-opt-true" style="min-height:54px;font-size:16px">BENAR</button>
+        <button class="cta ${userAns === false ? '' : 'o'}" id="bs-opt-false" style="min-height:54px;font-size:16px">SALAH</button>
+      </div>
+    `;
+    $('#bs-opt-true').onclick = () => {
+      activeSim.answers[currIdx] = true;
+      AIStorage.set('active_sim', activeSim);
+      renderSimExamScreen(activeSim);
+    };
+    $('#bs-opt-false').onclick = () => {
+      activeSim.answers[currIdx] = false;
+      AIStorage.set('active_sim', activeSim);
+      renderSimExamScreen(activeSim);
+    };
+  } else if (q.type === 'fi') {
+    bodyEl.innerHTML = `
+      <div style="margin:16px 0">
+        <input id="sim-fi-input" value="${userAns || ''}" placeholder="Ketik jawaban kamu di sini..." style="width:100%;padding:14px;border-radius:14px;border:2px solid #DDD;font-size:16px;font-weight:700">
+        <button class="cta w" id="sim-fi-save" style="margin-top:10px;width:100%">Simpan Jawaban</button>
+      </div>
+    `;
+    const saveFi = () => {
+      const val = $('#sim-fi-input').value;
+      activeSim.answers[currIdx] = val;
+      AIStorage.set('active_sim', activeSim);
+      renderSimExamScreen(activeSim);
+    };
+    $('#sim-fi-save').onclick = saveFi;
+    $('#sim-fi-input').onchange = saveFi;
+  } else if (q.type === 'mt') {
+    const pairs = q.data[3];
+    const options = q.data[2];
+    const mtAns = userAns || {};
+
+    bodyEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:12px;margin:16px 0">
+        ${pairs.map((p, k) => `
+          <div style="background:#FAF9FB;padding:12px 16px;border-radius:14px;border:2px solid #E5E5E5;display:flex;flex-direction:column;gap:6px">
+            <span style="font-weight:800;color:var(--plum)">${p[0]}</span>
+            <select data-pairidx="${k}" class="sim-mt-select" style="width:100%;padding:10px;border-radius:10px;border:2px solid #DDD;font-weight:700">
+              <option value="">-- Pilih Pasangan --</option>
+              ${options.map((opt, optIdx) => `<option value="${optIdx}" ${mtAns[k] === optIdx ? 'selected' : ''}>${opt}</option>`).join('')}
+            </select>
+          </div>
+        `).join('')}
+      </div>
+    `;
+
+    bodyEl.querySelectorAll('.sim-mt-select').forEach(sel => {
+      sel.onchange = () => {
+        const pairK = sel.dataset.pairidx;
+        const val = sel.value === '' ? undefined : parseInt(sel.value, 10);
+        if (!activeSim.answers[currIdx]) activeSim.answers[currIdx] = {};
+        if (val === undefined) {
+          delete activeSim.answers[currIdx][pairK];
+        } else {
+          activeSim.answers[currIdx][pairK] = val;
+        }
+        AIStorage.set('active_sim', activeSim);
+      };
+    });
+  }
+
+  $('#btn-sim-prev').onclick = () => {
+    if (currIdx > 0) {
+      activeSim.currentIdx = currIdx - 1;
+      AIStorage.set('active_sim', activeSim);
+      renderSimExamScreen(activeSim);
+    }
+  };
+
+  $('#btn-sim-next').onclick = () => {
+    if (currIdx < qList.length - 1) {
+      activeSim.currentIdx = currIdx + 1;
+      AIStorage.set('active_sim', activeSim);
+      renderSimExamScreen(activeSim);
+    }
+  };
+
+  $('#btn-sim-submit').onclick = () => {
+    const unans = qList.length - Object.keys(activeSim.answers).length;
+    let msg = 'Apakah kamu yakin ingin mengumpulkan jawaban ujian ini?';
+    if (unans > 0) {
+      msg = `Masih ada ${unans} soal yang belum dijawab! ` + msg;
+    }
+    if (confirm(msg)) {
+      submitSim(activeSim);
+    }
+  };
+}
+
+function submitSim(activeSim) {
+  if (simInterval) {
+    clearInterval(simInterval);
+    simInterval = null;
+  }
+
+  activeSim.submitted = true;
+  activeSim.finishTime = Date.now();
+
+  let scoreSum = 0;
+  const reviews = [];
+  const catScore = { bs: { ok: 0, tot: 0 }, fi: { ok: 0, tot: 0 }, mt: { ok: 0, tot: 0 } };
+  const babScore = {};
+
+  activeSim.questions.forEach((q, idx) => {
+    const userVal = activeSim.answers[idx];
+    let isOk = false;
+    let userDisplay = 'Tidak dijawab';
+    let correctDisplay = '';
+    let itemScore = 0;
+
+    if (!babScore[q.bab]) babScore[q.bab] = { ok: 0, tot: 0 };
+
+    if (q.type === 'bs') {
+      catScore.bs.tot += 5;
+      babScore[q.bab].tot += 5;
+      const expected = q.data[2];
+      correctDisplay = expected ? 'BENAR' : 'SALAH';
+      if (userVal !== undefined) {
+        userDisplay = userVal ? 'BENAR' : 'SALAH';
+        isOk = (userVal === expected);
+      }
+      if (isOk) {
+        itemScore = 5;
+        catScore.bs.ok += 5;
+        babScore[q.bab].ok += 5;
+      }
+      AIStorage.logAnswer({ id: q.id, kategori: 'bs', bab: q.bab, benar: isOk });
+    } else if (q.type === 'fi') {
+      catScore.fi.tot += 5;
+      babScore[q.bab].tot += 5;
+      correctDisplay = q.data[3];
+      if (userVal) {
+        userDisplay = userVal;
+        const check = checkIsianAnswer(userVal, q.data[2]);
+        isOk = check.ok;
+      }
+      if (isOk) {
+        itemScore = 5;
+        catScore.fi.ok += 5;
+        babScore[q.bab].ok += 5;
+      }
+      AIStorage.logAnswer({ id: q.id, kategori: 'fi', bab: q.bab, benar: isOk });
+    } else if (q.type === 'mt') {
+      catScore.mt.tot += 5;
+      babScore[q.bab].tot += 5;
+      const pairs = q.data[3];
+      const opts = q.data[2];
+      correctDisplay = pairs.map(p => `${p[0]} ➔ ${opts[p[1]]}`).join(' | ');
+
+      let pairCorrectCount = 0;
+      if (userVal && typeof userVal === 'object') {
+        const userPairsStr = [];
+        pairs.forEach((p, k) => {
+          const ansIdx = userVal[k];
+          if (ansIdx !== undefined) {
+            userPairsStr.push(`${p[0]} ➔ ${opts[ansIdx]}`);
+            if (ansIdx === p[1]) pairCorrectCount++;
+          }
+        });
+        userDisplay = userPairsStr.length ? userPairsStr.join(' | ') : 'Tidak lengkap';
+      }
+
+      itemScore = (pairCorrectCount / pairs.length) * 5;
+      catScore.mt.ok += itemScore;
+      babScore[q.bab].ok += itemScore;
+      isOk = (pairCorrectCount === pairs.length);
+      AIStorage.logAnswer({ id: q.id, kategori: 'mt', bab: q.bab, benar: isOk });
+    }
+
+    scoreSum += itemScore;
+
+    reviews.push({
+      q,
+      isOk,
+      userDisplay,
+      correctDisplay,
+      exp: q.data[3] || q.data[2] || 'Lihat materi ringkasan bab terkait.'
+    });
+  });
+
+  const finalScore = Math.round(scoreSum);
+  const durationSec = Math.round((activeSim.finishTime - activeSim.startTime) / 1000);
+
+  const simResultRecord = {
+    waktu: Date.now(),
+    durasiDetik: durationSec,
+    skorTotal: finalScore,
+    skorKategori: catScore,
+    skorBab: babScore,
+    totalSoal: activeSim.questions.length
+  };
+
+  const history = AIStorage.get('simulations', []);
+  history.unshift(simResultRecord);
+  AIStorage.set('simulations', history);
+
+  activeSim.results = {
+    score: finalScore,
+    durationSec,
+    catScore,
+    babScore,
+    reviews
+  };
+
+  AIStorage.set('active_sim', activeSim);
+  renderSimResultScreen(activeSim);
+}
+
+function renderSimResultScreen(activeSim) {
+  const res = activeSim.results;
+  const score = res.score;
+  const m = Math.floor(res.durationSec / 60);
+  const s = res.durationSec % 60;
+
+  let rankStr = 'PERLU BELAJAR LAGI';
+  let rankBg = '#E74C3C';
+  if (score >= 85) {
+    rankStr = '🏆 SANGAT MEMUASKAN (A)';
+    rankBg = 'var(--mag)';
+  } else if (score >= 70) {
+    rankStr = '✨ MEMUASKAN (B)';
+    rankBg = 'var(--cy)';
+  } else if (score >= 55) {
+    rankStr = '👍 CUKUP (C)';
+    rankBg = 'var(--yel)';
+  }
+
+  app.innerHTML = `
+    <div class="sim-container">
+      <div class="sim-result-hero">
+        <h3 style="margin:0 0 4px;opacity:0.9">Hasil Simulasi Ujian UTS</h3>
+        <div class="sim-big-score">${score}</div>
+        <span class="sim-rank-badge" style="background:${rankBg};color:${score >= 55 && score < 70 ? 'var(--plum)' : '#FFF'}">${rankStr}</span>
+      </div>
+
+      <div class="sim-stats-grid">
+        <div class="sim-stat-card">
+          <h4>Total Waktu</h4>
+          <div class="val">${m}m ${s}s</div>
+        </div>
+        <div class="sim-stat-card">
+          <h4>Total Soal</h4>
+          <div class="val">${activeSim.questions.length} Soal</div>
+        </div>
+        <div class="sim-stat-card">
+          <h4>Akurasi Nilai</h4>
+          <div class="val" style="color:var(--mag)">${score}%</div>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <h3>Evaluasi per Kategori Soal</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;margin-bottom:4px">
+              <span>Benar / Salah</span>
+              <span>${Math.round((res.catScore.bs.ok / (res.catScore.bs.tot || 1)) * 100)}%</span>
+            </div>
+            <div class="ch-meter"><div class="ch-meter-fill" style="width:${(res.catScore.bs.ok / (res.catScore.bs.tot || 1)) * 100}%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;margin-bottom:4px">
+              <span>Isian Singkat</span>
+              <span>${Math.round((res.catScore.fi.ok / (res.catScore.fi.tot || 1)) * 100)}%</span>
+            </div>
+            <div class="ch-meter"><div class="ch-meter-fill" style="width:${(res.catScore.fi.ok / (res.catScore.fi.tot || 1)) * 100}%"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-weight:800;font-size:13px;margin-bottom:4px">
+              <span>Cocokkan Pasangan</span>
+              <span>${Math.round((res.catScore.mt.ok / (res.catScore.mt.tot || 1)) * 100)}%</span>
+            </div>
+            <div class="ch-meter"><div class="ch-meter-fill" style="width:${(res.catScore.mt.ok / (res.catScore.mt.tot || 1)) * 100}%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <h3>Pembahasan & Review Jawaban</h3>
+        <div style="margin-top:16px">
+          ${res.reviews.map((rv, i) => `
+            <div class="sim-review-item ${rv.isOk ? 'correct' : 'wrong'}">
+              <div class="sim-review-header">
+                <span>Soal ${i + 1} (Bab ${rv.q.bab})</span>
+                <span class="sim-review-status ${rv.isOk ? 'correct' : 'wrong'}">${rv.isOk ? '✓ BENAR' : '✗ SALAH'}</span>
+              </div>
+              <p style="font-weight:800;margin:0 0 8px;color:var(--plum)">${rv.q.type === 'bs' ? rv.q.data[1] : rv.q.type === 'fi' ? rv.q.data[1] : rv.q.data[1]}</p>
+              <div style="font-size:13px;line-height:1.4">
+                <div><b>Jawaban Kamu:</b> ${rv.userDisplay}</div>
+                <div><b>Jawaban Benar:</b> ${rv.correctDisplay}</div>
+              </div>
+              ${rv.q.type === 'bs' && rv.q.data[3] ? `<div class="sim-review-exp"><b>Pembahasan:</b> ${rv.q.data[3]}</div>` : ''}
+              ${rv.q.type === 'es' && rv.q.data[2] ? `<div class="sim-review-exp"><b>Pembahasan:</b> ${rv.q.data[2]}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:16px">
+        <button class="cta o" id="btn-sim-reset">🚀 Ujian Baru</button>
+        <button class="cta" id="btn-sim-home">🏠 Ke Beranda</button>
+      </div>
+    </div>
+  `;
+
+  $('#btn-sim-reset').onclick = () => {
+    AIStorage.set('active_sim', null);
+    renderSimSetupScreen();
+  };
+
+  $('#btn-sim-home').onclick = () => {
+    mode = 'home';
+    AIStorage.set('ui.mode', 'home');
+    go();
+  };
+}
+
+// Hash Routing Listener
+window.addEventListener('hashchange', () => {
+  const h = window.location.hash.replace('#', '');
+  if (h && TABS.some(t => t[0] === h)) {
+    if (mode !== h) {
+      mode = h;
+      AIStorage.set('ui.mode', h);
+      go();
+    }
+  }
+});
+
+// Initial Hash Check
+if (window.location.hash) {
+  const h = window.location.hash.replace('#', '');
+  if (h && TABS.some(t => t[0] === h)) {
+    mode = h;
+    AIStorage.set('ui.mode', h);
+  }
+}
+
+// Setup Export / Import
+const btnExport = $('#btn-export');
+if (btnExport) {
+  btnExport.onclick = () => {
+    const dataStr = AIStorage.export();
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `belajar_ai_uts_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+}
+
+const btnImport = $('#btn-import');
+const fileInput = $('#file-import-input');
+if (btnImport && fileInput) {
+  btnImport.onclick = () => fileInput.click();
+  fileInput.onchange = e => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = evt => {
+        const ok = AIStorage.import(evt.target.result);
+        if (ok) {
+          alert('Progres berhasil diimpor!');
+          mode = 'home';
+          go();
+        } else {
+          alert('Gagal mengimpor file! Format JSON tidak valid.');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+}
+
 // Start application
 initContainerInteractions();
 go();
+

@@ -152,24 +152,14 @@ Contoh: `bs_k7x9a`, `mt_p3q1z`, `fi_m8w2d`, `fc_r4t6y`, `es_v9b2c`.
 ## 5. Rencana Pelaksanaan Bertahap
 
 - **Fase 0 (Selesai)**: Audit dan penyusunan `PLAN.md`.
-- **Fase 1**: Fondasi Data
-  - Implementasi modul `storage.js` dengan fallback memory dan namespace `ai_v2`.
-  - Migrasi data lama otomatis.
-  - Injeksi stable ID pada bank soal.
-  - Pencatatan log jawaban (maks. 2000 riwayat FIFO).
-  - Hubungkan kategori Benar/Salah, Cocokkan, Isian ke sistem pencatatan tanpa mengubah fungsionalitas kuis.
-- **Fase 2**: Dashboard & Bank Soal Salah
-  - Tab "Beranda" (kartu info3, 7 bar progres bab, badge "Bab terlemah", target harian, grafik batang 7 hari, tombol "Latih bab terlemah").
-  - Mode "Ulangi yang salah" (soal salah gugur setelah 2x berturut-turut benar).
-  - Tombol Bookmark "Tandai penting" & filter bookmark.
-  - **Uji coba & checkpoint stop Fase 2.**
-- **Fase 3**: Sistem Leitner 5 Kotak pada Kartu.
-- **Fase 4**: Simulasi Ujian UTS (Timer akurat, navigasi nomor, resume state, analisis hasil).
-  - **Uji coba & checkpoint stop Fase 4.**
-- **Fase 5**: Navigasi Mobile-First (Fixed bottom bar ≤768px, hash routing).
-- **Fase 6**: Pomodoro Timer & Background Sound (Web Audio sintetis murni).
-- **Fase 7**: PWA Offline, SEO, Vercel Config.
-- **Fase 8**: Ekspor/Impor, Print Mode, Toleransi Levenshtein, Polish.
+- **Fase 1 (Selesai)**: Fondasi Data (`storage.js`, namespace `ai_v2`, stable ID djb2, migrasi otomatis, log 2000 riwayat).
+- **Fase 2 (Selesai)**: Dashboard Beranda & Bank Soal Salah (Progres 7 Bab, Bab terlemah, Target harian, grafik 7 hari, Bookmark).
+- **Fase 3 (Selesai)**: Sistem Leitner 5 Kotak pada Kartu (`fc`).
+- **Fase 4 (Selesai)**: Simulasi Ujian UTS (Tab Simulasi, timer countdown akurat, 20 soal campuran, grid navigasi 1-20, ragu-ragu, resume state, analisis hasil).
+- **Fase 5 (Selesai)**: Navigasi Mobile-First & Hash Routing (`#home`, `#sim`, `#wrong`, dll).
+- **Fase 6 (Selesai)**: Pomodoro Timer & Background Ambient Sound (Web Audio murni, floating bubble).
+- **Fase 7 (Selesai)**: PWA Offline (`manifest.json`, `sw.js` service worker) & Vercel Config (`vercel.json`).
+- **Fase 8 (Selesai)**: Ekspor/Impor JSON Progres, Toleransi Ejaan Levenshtein untuk Isian, Polish & Finalization.
 
 ---
 

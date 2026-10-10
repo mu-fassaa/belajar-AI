@@ -7,7 +7,10 @@
   <meta name="description" content="Latihan UTS Kecerdasan Buatan Pertemuan 1-7: ringkasan, kartu, benar/salah, cocokkan, isian">
   <title>Latihan UTS Kecerdasan Buatan</title>
   <link href="https://fonts.googleapis.com/css2?family=Anton&family=Knewave&family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <link rel="stylesheet" href="css/sim.css">
 </head>
 <body>
   <main>
@@ -25,12 +28,25 @@
     </div>
     <div id="app"></div>
     <div class="foot">
-      <button id="rsall">Reset progres hafalan</button>
+      <button id="btn-export">📥 Ekspor Progres</button>
+      <button id="btn-import">📤 Impor Progres</button>
+      <button id="rsall">Reset Data</button>
+      <input type="file" id="file-import-input" accept=".json" style="display:none">
     </div>
   </main>
 
   <script src="js/data.js"></script>
   <script src="js/storage.js"></script>
   <script src="js/app.js"></script>
+  <script src="js/tools.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.warn('SW registration failed:', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>
